@@ -14,19 +14,22 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# 从环境变量读取配置
+import os
+
 # DeepSeek API配置
-DEEPSEEK_API_KEY = 'sk-3e2ae11bbc9a41398f0eac1b9ce7f063'
-DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DEEPSEEK_API_URL = os.environ.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/v1/chat/completions')
 
 # 阿里云短信配置
-ALIYUN_ACCESS_KEY_ID = 'ENV_ALIYUN_ACCESS_KEY_ID'
-ALIYUN_ACCESS_KEY_SECRET = 'EVQDqVPrXYazv7Edpb6MjSgxb4rPjv'
-ALIYUN_SMS_SIGN_NAME = '星伴守护'
-ALIYUN_SMS_TEMPLATE_CODE = 'SMS_155075006'
+ALIYUN_ACCESS_KEY_ID = os.environ.get('ALIYUN_ACCESS_KEY_ID', '')
+ALIYUN_ACCESS_KEY_SECRET = os.environ.get('ALIYUN_ACCESS_KEY_SECRET', '')
+ALIYUN_SMS_SIGN_NAME = os.environ.get('ALIYUN_SMS_SIGN_NAME', '星伴守护')
+ALIYUN_SMS_TEMPLATE_CODE = os.environ.get('ALIYUN_SMS_TEMPLATE_CODE', 'SMS_155075006')
 
 app = Flask(__name__)
 CORS(app)
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # 生产环境应使用环境变量
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 # 验证码存储
 verification_codes = {}

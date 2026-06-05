@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 # 从环境变量读取配置
 import os
+from dotenv import load_dotenv
+
+# 加载.env文件（仅开发环境）
+load_dotenv()
 
 # DeepSeek API配置
 DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')

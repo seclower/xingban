@@ -9,6 +9,7 @@ import requests
 import json
 import random
 import time
+from typing import Optional, Dict, Any, Tuple, List, Union
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -205,6 +206,17 @@ def init_db():
         location TEXT,
         contacts_notified TEXT,
         status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    
+    # 创建AI聊天历史表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS chat_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )''')
@@ -879,30 +891,340 @@ def get_diaries():
     
     return jsonify(diaries_list)
 
-# AI聊天
+# 获取聊天历史
+@app.route('/api/emotion/chat-history', methods=['GET'])
+def get_chat_history():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM chat_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', (user_id,))
+    history = cursor.fetchall()
+    conn.close()
+    
+    return jsonify([{
+        'id': h['id'],
+        'role': h['role'],
+        'content': h['content'],
+        'created_at': h['created_at']
+    } for h in history])
+
+# 清空聊天历史
+@app.route('/api/emotion/chat-history', methods=['DELETE'])
+def clear_chat_history():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM chat_history WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'message': '聊天历史已清空'})
+
+# 获取聊天统计信息
+@app.route('/api/emotion/chat-stats', methods=['GET'])
+def get_chat_stats():
+    """获取聊天统计信息"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 获取总消息数
+    cursor.execute('SELECT COUNT(*) as count FROM chat_history WHERE user_id = ?', (user_id,))
+    total_messages = cursor.fetchone()['count']
+    
+    # 获取用户消息数
+    cursor.execute('SELECT COUNT(*) as count FROM chat_history WHERE user_id = ? AND role = ?', (user_id, 'user'))
+    user_messages = cursor.fetchone()['count']
+    
+    # 获取AI消息数
+    cursor.execute('SELECT COUNT(*) as count FROM chat_history WHERE user_id = ? AND role = ?', (user_id, 'assistant'))
+    ai_messages = cursor.fetchone()['count']
+    
+    # 获取本周消息数
+    cursor.execute('''
+        SELECT COUNT(*) as count FROM chat_history 
+        WHERE user_id = ? AND created_at >= datetime('now', '-7 days')
+    ''', (user_id,))
+    weekly_messages = cursor.fetchone()['count']
+    
+    # 获取今日消息数
+    cursor.execute('''
+        SELECT COUNT(*) as count FROM chat_history 
+        WHERE user_id = ? AND date(created_at) = date('now')
+    ''', (user_id,))
+    today_messages = cursor.fetchone()['count']
+    
+    # 获取最近的聊天日期
+    cursor.execute('''
+        SELECT date(created_at) as chat_date, COUNT(*) as count 
+        FROM chat_history 
+        WHERE user_id = ?
+        GROUP BY date(created_at)
+        ORDER BY chat_date DESC
+        LIMIT 7
+    ''', (user_id,))
+    recent_dates = cursor.fetchall()
+    
+    conn.close()
+    
+    return jsonify({
+        'totalMessages': total_messages,
+        'userMessages': user_messages,
+        'aiMessages': ai_messages,
+        'weeklyMessages': weekly_messages,
+        'todayMessages': today_messages,
+        'recentDates': recent_dates,
+        'averagePerDay': round(weekly_messages / 7, 1) if weekly_messages > 0 else 0
+    })
+
+# 获取聊天话题分类
+@app.route('/api/emotion/chat-topics', methods=['GET'])
+def get_chat_topics():
+    """获取聊天话题分类统计"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 获取最近30天的用户消息进行分析
+    cursor.execute('''
+        SELECT content FROM chat_history 
+        WHERE user_id = ? AND role = 'user' AND created_at >= datetime('now', '-30 days')
+        ORDER BY created_at DESC
+    ''', (user_id,))
+    
+    messages = cursor.fetchall()
+    conn.close()
+    
+    # 话题关键词分类
+    topic_keywords = {
+        '安全相关': ['安全', '危险', '报警', '求助', '跟踪', '陌生人', '夜晚', '打车', '独居'],
+        '情感支持': ['难过', '伤心', '害怕', '担心', '焦虑', '孤独', '寂寞', '压力', '累'],
+        '日常倾诉': ['今天', '事情', '发生', '工作', '学习', '朋友', '家人', '生活'],
+        '紧急求助': ['紧急', 'SOS', '急救', '受伤', '生病', '火灾', '盗窃', '抢劫'],
+        '健康养生': ['健康', '身体', '睡眠', '饮食', '运动', '心情', '放松']
+    }
+    
+    topic_counts = {topic: 0 for topic in topic_keywords}
+    topic_counts['其他'] = 0
+    
+    for msg in messages:
+        content = msg['content']
+        found = False
+        for topic, keywords in topic_keywords.items():
+            if any(keyword in content for keyword in keywords):
+                topic_counts[topic] += 1
+                found = True
+                break
+        if not found:
+            topic_counts['其他'] += 1
+    
+    # 转换为列表格式
+    topics = [
+        {'name': topic, 'count': count, 'percentage': round(count / len(messages) * 100, 1) if messages else 0}
+        for topic, count in topic_counts.items()
+    ]
+    
+    # 按数量排序
+    topics.sort(key=lambda x: x['count'], reverse=True)
+    
+    return jsonify({
+        'topics': topics,
+        'totalMessages': len(messages),
+        'period': '30天'
+    })
+
+# 获取情绪分析
+@app.route('/api/emotion/mood-analysis', methods=['GET'])
+def get_mood_analysis():
+    """获取用户情绪分析"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 获取最近30天的用户消息
+    cursor.execute('''
+        SELECT content FROM chat_history 
+        WHERE user_id = ? AND role = 'user' AND created_at >= datetime('now', '-30 days')
+        ORDER BY created_at DESC
+    ''', (user_id,))
+    
+    messages = cursor.fetchall()
+    
+    # 情绪关键词分析
+    mood_keywords = {
+        '开心': ['开心', '高兴', '快乐', '棒', '谢谢', '好开心', '太好了', '完美', '幸福'],
+        '平静': ['还好', '一般', '正常', '平静', '还好啦', '没什么', '还好吧'],
+        '担忧': ['担心', '害怕', '担心', '焦虑', '紧张', '不安', '顾虑', '发愁'],
+        '难过': ['难过', '伤心', '痛苦', '难受', '不爽', '郁闷', '沮丧', '失落'],
+        '愤怒': ['生气', '愤怒', '讨厌', '气', '不爽', '恼火', '火大', '气愤']
+    }
+    
+    mood_counts = {mood: 0 for mood in mood_keywords}
+    
+    for msg in messages:
+        content = msg['content']
+        for mood, keywords in mood_keywords.items():
+            if any(keyword in content for keyword in keywords):
+                mood_counts[mood] += 1
+    
+    # 计算主要情绪
+    total_detected = sum(mood_counts.values())
+    if total_detected > 0:
+        main_mood = max(mood_counts, key=mood_counts.get)
+    else:
+        main_mood = '平静'
+    
+    conn.close()
+    
+    return jsonify({
+        'mainMood': main_mood,
+        'moodDistribution': mood_counts,
+        'totalAnalyzed': total_detected,
+        'period': '30天',
+        'suggestions': _get_mood_suggestions(main_mood)
+    })
+
+def _get_mood_suggestions(mood):
+    """根据情绪提供建议"""
+    suggestions = {
+        '开心': [
+            '继续保持好心情！😊',
+            '可以将这份快乐分享给身边的人',
+            '记录下让你开心的事情，以后可以回顾'
+        ],
+        '平静': [
+            '保持平和的心态很重要 🌿',
+            '可以尝试一些新的活动让生活更有趣',
+            '记得适时放松，不要太紧绷'
+        ],
+        '担忧': [
+            '不要一个人扛着，可以和我聊聊 💭',
+            '把担心的事情写下来，逐一解决',
+            '必要时记得寻求家人朋友或专业人士的帮助'
+        ],
+        '难过': [
+            '难过的时候记得你不是一个人 🤗',
+            '可以做一些让自己放松的事情',
+            '如果持续很久，建议和心理咨询师聊聊'
+        ],
+        '愤怒': [
+            '先深呼吸，冷静一下 🧘‍♀️',
+            '可以换个环境，转移注意力',
+            '把愤怒的原因写下来，有助于平复情绪'
+        ]
+    }
+    return suggestions.get(mood, ['记得照顾好自己 💝'])
+
+# AI聊天 - 增强版
 @app.route('/api/emotion/chat', methods=['POST'])
 def chat():
     data = request.json
     message = data.get('message')
     
-    # 星伴AI系统提示
-    system_prompt = """你是一个专业、温暖的女性安全助手"星伴"，你的特点是：
-    1. 专业可靠的安全知识
-    2. 温柔体贴的沟通方式
-    3. 时刻关注用户安全
-    4. 善于识别危险信号
-    5. 能够提供实用的安全建议
+    # 从token获取用户ID
+    token = request.headers.get('Authorization')
+    user_id = None
+    if token:
+        user_id = verify_token(token)
     
-    你的核心职责：
-    - 提供安全咨询和建议
-    - 识别潜在危险
-    - 紧急情况指导
-    - 情感陪伴支持
-    - 安全知识普及
-    
-    请用温暖、专业的方式回复用户。注意保护用户隐私。"""
+    # 增强版星伴AI系统提示
+    system_prompt = """你是"星伴"，一个专业、温暖、善解人意的女性安全助手。你的核心特质：
+
+1. **温柔陪伴**：
+   - 用温暖、亲切的语气和用户交流
+   - 善于倾听，给予情感支持
+   - 使用亲切的称呼和温馨的表情符号
+   - 理解用户的情绪和感受
+
+2. **安全守护**：
+   - 拥有专业的安全知识
+   - 时刻关注用户的安全状况
+   - 敏锐识别危险信号
+   - 提供实用、可操作的安全建议
+
+3. **情感支持**：
+   - 在用户焦虑、害怕时给予安慰
+   - 在用户难过时给予陪伴
+   - 在用户开心时一起分享快乐
+   - 用共情的语言回应
+
+4. **安全专业**：
+   - 提供正确的安全知识
+   - 不传播错误信息
+   - 紧急情况给出明确指导
+   - 引导用户寻求专业帮助
+
+5. **对话风格**：
+   - 使用自然、口语化的表达
+   - 适当使用温馨的表情符号
+   - 保持积极向上的态度
+   - 关注对话的连贯性
+   - 记得之前的对话内容
+
+你的回答要：
+✅ 温暖亲切，有共情
+✅ 专业可靠，信息准确
+✅ 简洁明了，易于理解
+✅ 积极向上，给予希望
+✅ 记得对话上下文
+
+请时刻记住，你是"星伴"，一个守护用户安全、陪伴用户心灵的温暖助手！"""
     
     try:
+        # 准备消息列表
+        messages = [{'role': 'system', 'content': system_prompt}]
+        
+        # 如果有用户ID，获取历史对话作为上下文（最近10条）
+        if user_id:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY created_at ASC LIMIT 10', (user_id,))
+            history = cursor.fetchall()
+            
+            # 添加历史消息
+            for h in history:
+                messages.append({'role': h['role'], 'content': h['content']})
+            
+            conn.close()
+        
+        # 添加当前消息
+        messages.append({'role': 'user', 'content': message})
+        
         # 调用DeepSeek API
         headers = {
             'Content-Type': 'application/json',
@@ -911,12 +1233,9 @@ def chat():
         
         payload = {
             'model': 'deepseek-chat',
-            'messages': [
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': message}
-            ],
-            'temperature': 0.7,
-            'max_tokens': 500
+            'messages': messages,
+            'temperature': 0.8,
+            'max_tokens': 800
         }
         
         response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
@@ -924,6 +1243,18 @@ def chat():
         if response.status_code == 200:
             result = response.json()
             ai_response = result['choices'][0]['message']['content']
+            
+            # 保存到历史记录（如果有用户ID）
+            if user_id:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)', 
+                              (user_id, 'user', message))
+                cursor.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)', 
+                              (user_id, 'assistant', ai_response))
+                conn.commit()
+                conn.close()
+            
             return jsonify({'response': ai_response})
         else:
             logger.error(f'DeepSeek API error: {response.status_code}')
@@ -931,16 +1262,33 @@ def chat():
             
     except Exception as e:
         logger.error(f'AI chat error: {e}')
-        # 如果API调用失败，使用预设回复
+        # 如果API调用失败，使用更丰富的预设回复
         import random
         responses = [
-            "我理解你的感受，有什么我可以帮助你的吗？",
-            "安全是最重要的，如果你需要任何安全建议，随时告诉我。",
-            "很高兴听到你的分享，保持积极的心态对安全意识很重要。",
-            "记住，在遇到危险时要保持冷静，优先确保自己的安全。",
-            "定期检查紧急联系人信息是个好习惯，确保在需要时能及时联系到他们。"
+            "亲爱的，我理解你的感受 💛 无论发生什么，我都会在这里陪伴你。有什么想和我说的吗？",
+            "安全永远是第一位的哦 🛡️ 如果你需要任何安全建议，随时和我说，我会尽力帮助你！",
+            "很高兴听到你的分享 🌟 保持积极的心态对安全意识真的很重要呢！",
+            "记住哦，遇到危险时一定要保持冷静，优先确保自己的安全 🙏 有需要随时找我！",
+            "定期检查紧急联系人信息是个好习惯呢 ✅ 确保在需要时能及时联系到他们，这让我很安心！",
+            "你今天过得怎么样呀？😊 如果有什么不开心的，可以和我说说，我会认真听的！",
+            "感觉你好像有点担心... 别害怕，有我在呢 💪 需要什么帮助吗？",
+            "抱抱你 🤗 无论遇到什么困难，我们一起面对，好吗？"
         ]
-        return jsonify({'response': random.choice(responses)})
+        
+        fallback_response = random.choice(responses)
+        
+        # 保存到历史记录（如果有用户ID）
+        if user_id:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)', 
+                          (user_id, 'user', message))
+            cursor.execute('INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)', 
+                          (user_id, 'assistant', fallback_response))
+            conn.commit()
+            conn.close()
+        
+        return jsonify({'response': fallback_response})
 
 # 安全场景分析
 @app.route('/api/safety/analyze', methods=['POST'])
@@ -1135,10 +1483,15 @@ def get_safety_suggestions():
     
     return jsonify({'suggestions': suggestions})
 
-# 健康检查
+# 健康检查 - 供内部使用
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok'})
+
+# 健康检查 - 供 Render 监控使用
+@app.route('/healthz', methods=['GET'])
+def healthz():
+    return jsonify({'status': 'healthy'}), 200
 
 # ==================== 会员系统API ====================
 
@@ -1742,3 +2095,8 @@ def get_admin_logs():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+# Gunicorn 入口
+def create_app():
+    init_db()
+    return app

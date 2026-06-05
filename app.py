@@ -21,8 +21,8 @@ game_records = {}
 
 # 模拟数据
 mock_users = {
-    '12345678910': {
-        'phone': '12345678910',
+    '13188393081': {
+        'phone': '13188393081',
         'password': bcrypt.hashpw('123456'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         'name': '测试用户',
         'avatar': 'https://via.placeholder.com/150',

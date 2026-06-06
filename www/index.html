@@ -39,6 +39,109 @@
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 动态粒子背景 */
+        .particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float-particle 15s infinite;
+            backdrop-filter: blur(1px);
+        }
+        
+        @keyframes float-particle {
+            0%, 100% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        /* 星光效果 */
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.3);
+            animation: twinkle 2s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        
+        /* 霓虹光晕 */
+        .neon-glow {
+            position: relative;
+        }
+        
+        .neon-glow::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #667eea);
+            background-size: 400% 400%;
+            border-radius: inherit;
+            z-index: -1;
+            filter: blur(5px);
+            animation: neon-glow 3s ease infinite;
+            opacity: 0.7;
+        }
+        
+        @keyframes neon-glow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* 渐变边框动画 */
+        .gradient-border-animate {
+            position: relative;
+            background: white;
+            border-radius: 1rem;
+        }
+        
+        .gradient-border-animate::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #ff6b6b, #667eea);
+            background-size: 400% 400%;
+            border-radius: inherit;
+            z-index: -1;
+            animation: gradient-rotate 4s linear infinite;
+        }
+        
+        @keyframes gradient-rotate {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .glass {
@@ -55,11 +158,166 @@
         .btn-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-gradient::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-gradient:hover::before {
+            left: 100%;
         }
         
         .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 3D 卡片效果 */
+        .card-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+        
+        .card-3d:hover {
+            transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) translateY(-10px);
+        }
+        
+        /* 脉冲光效 */
+        .pulse-light {
+            animation: pulseLight 2s infinite;
+        }
+        
+        @keyframes pulseLight {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(102, 126, 234, 0.8), 0 0 60px rgba(102, 126, 234, 0.4);
+            }
+        }
+        
+        /* 彩虹渐变动画 */
+        .rainbow-gradient {
+            background: linear-gradient(270deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #667eea);
+            background-size: 400% 400%;
+            animation: rainbow 8s ease infinite;
+        }
+        
+        @keyframes rainbow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* 流星效果 */
+        .shooting-star {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: shoot 3s infinite;
+        }
+        
+        @keyframes shoot {
+            0% {
+                transform: translateX(0) translateY(0);
+                opacity: 1;
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(300px) translateY(300px);
+                opacity: 0;
+            }
+        }
+        
+        /* 波动动画 */
+        .wave {
+            animation: wave 1s ease-in-out infinite;
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* 弹跳效果 */
+        .bounce-in {
+            animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* 旋转进入 */
+        .spin-in {
+            animation: spinIn 0.8s ease-out;
+        }
+        
+        @keyframes spinIn {
+            from { transform: rotate(-180deg) scale(0); opacity: 0; }
+            to { transform: rotate(0deg) scale(1); opacity: 1; }
+        }
+        
+        /* 渐入上浮 */
+        .fade-up {
+            animation: fadeUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 悬停发光边框 */
+        .glow-border {
+            transition: all 0.3s ease;
+        }
+        
+        .glow-border:hover {
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.6), 0 0 60px rgba(102, 126, 234, 0.3);
+            transform: translateY(-5px);
+        }
+        
+        /* 进度条动画 */
+        .progress-animate {
+            animation: progressBar 2s ease-out forwards;
+        }
+        
+        @keyframes progressBar {
+            from { width: 0%; }
+        }
+        
+        /* 打字机效果 */
+        .typewriter {
+            overflow: hidden;
+            border-right: 2px solid;
+            white-space: nowrap;
+            animation: typing 3s steps(30) forwards, blink 0.5s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink {
+            50% { border-color: transparent; }
         }
         
         .animate-pulse-ring {
@@ -337,6 +595,50 @@
     </style>
 </head>
 <body>
+    <!-- 动态粒子背景 -->
+    <div id="particle-container" class="particle-bg"></div>
+    
+    <script>
+        // 生成粒子背景
+        function createParticles() {
+            const container = document.getElementById('particle-container');
+            if (!container) return;
+            
+            // 清空现有粒子
+            container.innerHTML = '';
+            
+            // 创建粒子
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                particle.style.animationDelay = (Math.random() * 10) + 's';
+                particle.style.width = (Math.random() * 10 + 5) + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.opacity = Math.random() * 0.5 + 0.2;
+                container.appendChild(particle);
+            }
+            
+            // 创建星星
+            for (let i = 0; i < 20; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = (Math.random() * 2) + 's';
+                container.appendChild(star);
+            }
+        }
+        
+        // 页面加载完成后初始化粒子
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', createParticles);
+        } else {
+            createParticles();
+        }
+    </script>
+    
     <!-- Splash Screen -->
     <div id="splash-screen" class="fixed inset-0 bg-gradient-to-br from-primary to-secondary flex items-center justify-center z-[9999]">
         <div class="text-center text-white">
@@ -772,7 +1074,7 @@
                 </div>
                 
                 <!-- 安全指数仪表盘 -->
-                <div class="glass rounded-3xl p-6 mb-6 card-hover relative overflow-hidden">
+                <div class="glass rounded-3xl p-6 mb-6 card-hover relative overflow-hidden card-3d glow-border">
                     <!-- 装饰元素 -->
                     <div class="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-primary/15 to-transparent rounded-full -translate-y-1/2 translate-x-1/2"></div>
                     <div class="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-secondary/15 to-transparent rounded-full translate-y-1/2 -translate-x-1/2"></div>
@@ -795,7 +1097,7 @@
                             </div>
                         </div>
                     </div>
-                    <div id="safety-status" class="bg-green-50 rounded-xl p-3 flex items-center gap-2">
+                    <div id="safety-status" class="bg-green-50 rounded-xl p-3 flex items-center gap-2 pulse-light">
                         <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                         <span class="text-green-700 font-medium">🛡️ 安全守护中</span>
                     </div>
@@ -870,7 +1172,7 @@
                 </div>
 
                 <!-- AI智能助手入口 -->
-                <button onclick="showAIChat()" class="w-full glass rounded-3xl p-6 mb-6 card-hover text-left card-shine transition-all duration-300 hover:scale-[1.02]">
+                <button onclick="showAIChat()" class="w-full glass rounded-3xl p-6 mb-6 card-hover text-left card-shine transition-all duration-300 hover:scale-[1.02] neon-glow">
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center pulse-glow">
                             <i class="fa-solid fa-comments text-white text-2xl"></i>
@@ -900,31 +1202,31 @@
                 </div>
 
                 <!-- 快捷工具 -->
-                <div class="glass rounded-3xl p-6 mb-6">
+                <div class="glass rounded-3xl p-6 mb-6 card-3d glow-border">
                     <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-toolbox text-primary"></i>快捷工具
                     </h2>
                     <div class="grid grid-cols-4 gap-4">
-                        <button onclick="showLocationPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition">
-                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <button onclick="showLocationPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition hover:scale-110">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center wave">
                                 <i class="fa-solid fa-location-dot text-green-500 text-xl"></i>
                             </div>
                             <span class="text-xs text-gray-600">位置</span>
                         </button>
-                        <button onclick="showCommunityPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition">
-                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <button onclick="showCommunityPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition hover:scale-110">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center wave" style="animation-delay: 0.1s;">
                                 <i class="fa-solid fa-users text-blue-500 text-xl"></i>
                             </div>
                             <span class="text-xs text-gray-600">社区</span>
                         </button>
-                        <button onclick="showNearbyPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition">
-                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                        <button onclick="showNearbyPage()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition hover:scale-110">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center wave" style="animation-delay: 0.2s;">
                                 <i class="fa-solid fa-hospital text-red-500 text-xl"></i>
                             </div>
                             <span class="text-xs text-gray-600">附近</span>
                         </button>
-                        <button onclick="showReminders()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition">
-                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                        <button onclick="showReminders()" class="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-gray-50 transition hover:scale-110">
+                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center wave" style="animation-delay: 0.3s;">
                                 <i class="fa-solid fa-bell text-orange-500 text-xl"></i>
                             </div>
                             <span class="text-xs text-gray-600">提醒</span>
@@ -933,27 +1235,27 @@
                 </div>
 
                 <!-- 紧急电话 -->
-                <div class="glass rounded-3xl p-6">
+                <div class="glass rounded-3xl p-6 card-3d glow-border">
                     <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
                         <i class="fa-solid fa-phone-square text-danger"></i>紧急电话
                     </h2>
                     <div class="grid grid-cols-3 gap-4">
-                        <button onclick="callNumber('110')" class="bg-red-50 rounded-xl p-4 text-center hover:bg-red-100 transition">
-                            <div class="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center mb-2">
+                        <button onclick="callNumber('110')" class="bg-red-50 rounded-xl p-4 text-center hover:bg-red-100 transition hover:scale-105 glow-border">
+                            <div class="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center mb-2 pulse-light">
                                 <i class="fa-solid fa-shield-halved text-white text-xl"></i>
                             </div>
                             <p class="font-bold text-red-600">110</p>
                             <p class="text-xs text-gray-500">报警</p>
                         </button>
-                        <button onclick="callNumber('120')" class="bg-green-50 rounded-xl p-4 text-center hover:bg-green-100 transition">
-                            <div class="w-12 h-12 mx-auto bg-green-500 rounded-full flex items-center justify-center mb-2">
+                        <button onclick="callNumber('120')" class="bg-green-50 rounded-xl p-4 text-center hover:bg-green-100 transition hover:scale-105 glow-border">
+                            <div class="w-12 h-12 mx-auto bg-green-500 rounded-full flex items-center justify-center mb-2 pulse-light">
                                 <i class="fa-solid fa-truck-medical text-white text-xl"></i>
                             </div>
                             <p class="font-bold text-green-600">120</p>
                             <p class="text-xs text-gray-500">急救</p>
                         </button>
-                        <button onclick="callNumber('119')" class="bg-orange-50 rounded-xl p-4 text-center hover:bg-orange-100 transition">
-                            <div class="w-12 h-12 mx-auto bg-orange-500 rounded-full flex items-center justify-center mb-2">
+                        <button onclick="callNumber('119')" class="bg-orange-50 rounded-xl p-4 text-center hover:bg-orange-100 transition hover:scale-105 glow-border">
+                            <div class="w-12 h-12 mx-auto bg-orange-500 rounded-full flex items-center justify-center mb-2 pulse-light">
                                 <i class="fa-solid fa-fire-extinguisher text-white text-xl"></i>
                             </div>
                             <p class="font-bold text-orange-600">119</p>

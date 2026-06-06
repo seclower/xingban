@@ -8,22 +8,9 @@
         "installCommand": "pip install -r requirements.txt",
         "buildCommand": "echo 'Build completed'"
       }
-    },
-    {
-      "src": "backend/app.py",
-      "use": "@vercel/python",
-      "config": {
-        "runtime": "python3.9",
-        "installCommand": "pip install -r backend/requirements.txt",
-        "buildCommand": "echo 'Backend build completed'"
-      }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app.py"
-    },
     {
       "src": "/(.*)",
       "dest": "server.py"
@@ -37,8 +24,5 @@
     "ALIYUN_ACCESS_KEY_SECRET": "@aliyun_access_key_secret",
     "ALIYUN_SMS_SIGN_NAME": "@aliyun_sms_sign_name",
     "ALIYUN_SMS_TEMPLATE_CODE": "@aliyun_sms_template_code"
-  },
-  "installCommand": "pip install -r requirements.txt && pip install -r backend/requirements.txt",
-  "buildCommand": "echo 'Building xingban project...'",
-  "outputDirectory": "."
+  }
 }

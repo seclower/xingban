@@ -36,6 +36,9 @@ app = Flask(__name__)
 CORS(app)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
+# 重命名为backend_app供外部导入
+backend_app = app
+
 # 验证码存储
 verification_codes = {}
 

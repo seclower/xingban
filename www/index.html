@@ -534,7 +534,7 @@
                     <div class="flex items-start">
                         <input type="checkbox" id="agree-terms" class="w-4 h-4 text-primary border-gray-300 rounded mt-1">
                         <label for="agree-terms" class="ml-2 text-sm text-gray-600">
-                            我已阅读并同意<a href="#" class="text-primary hover:underline">用户协议</a>和<a href="#" class="text-primary hover:underline">隐私政策</a>
+                            我已阅读并同意<a href="#" onclick="showTermsModal(event)" class="text-primary hover:underline">用户协议</a>和<a href="#" onclick="showPrivacyModal(event)" class="text-primary hover:underline">隐私政策</a>
                         </label>
                     </div>
 
@@ -550,6 +550,173 @@
                     </p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 用户协议模态框 -->
+    <div id="terms-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center">
+        <div class="bg-white rounded-3xl p-6 m-4 max-w-lg w-full max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center gap-2">
+                    <i class="fa-solid fa-file-contract text-primary"></i>
+                    用户协议
+                </h3>
+                <button onclick="hideModal('terms-modal')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition">
+                    <i class="fa-solid fa-xmark text-gray-500"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r">
+                    <p class="font-medium text-blue-800">重要提示</p>
+                    <p class="text-blue-700 mt-1">请仔细阅读以下协议，特别是免除或限制责任的条款。</p>
+                </div>
+                
+                <h4 class="font-semibold text-gray-800">1. 服务说明</h4>
+                <p>星伴守护是一款安全防护和情感陪伴应用，提供紧急求助、安全知识、AI陪伴等功能。</p>
+                
+                <h4 class="font-semibold text-gray-800">2. 用户资格</h4>
+                <p>您必须年满18周岁或获得监护人同意才能使用本应用。</p>
+                
+                <h4 class="font-semibold text-gray-800">3. 用户行为规范</h4>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>不得利用本应用从事任何违法活动</li>
+                    <li>不得发布虚假求助信息</li>
+                    <li>不得侵犯他人隐私权益</li>
+                    <li>不得恶意攻击或骚扰其他用户</li>
+                </ul>
+                
+                <h4 class="font-semibold text-gray-800">4. 账户安全</h4>
+                <p>您应妥善保管账户信息，因保管不善造成的损失由您自行承担。</p>
+                
+                <h4 class="font-semibold text-gray-800">5. 免责声明</h4>
+                <p>本应用提供的安全建议仅供参考，不构成法律或安全建议。紧急情况下请优先联系警方。</p>
+                
+                <h4 class="font-semibold text-gray-800">6. 协议变更</h4>
+                <p>我们可能随时修改本协议，修改后的协议一经公布即生效。</p>
+            </div>
+            
+            <button onclick="hideModal('terms-modal')" class="w-full mt-6 btn-gradient text-white font-semibold py-3 rounded-xl">
+                我已阅读
+            </button>
+        </div>
+    </div>
+
+    <!-- 隐私政策模态框 -->
+    <div id="privacy-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center">
+        <div class="bg-white rounded-3xl p-6 m-4 max-w-lg w-full max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-primary"></i>
+                    隐私政策
+                </h3>
+                <button onclick="hideModal('privacy-modal')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition">
+                    <i class="fa-solid fa-xmark text-gray-500"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r">
+                    <p class="font-medium text-green-800">隐私保护承诺</p>
+                    <p class="text-green-700 mt-1">我们严格保护您的个人信息安全。</p>
+                </div>
+                
+                <h4 class="font-semibold text-gray-800">1. 信息收集</h4>
+                <p>我们收集的信息包括：手机号、昵称、头像、位置信息（经您授权）、聊天记录。</p>
+                
+                <h4 class="font-semibold text-gray-800">2. 信息使用</h4>
+                <p>我们使用您的信息来：</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>提供安全防护服务</li>
+                    <li>个性化AI陪伴服务</li>
+                    <li>发送安全提醒</li>
+                    <li>处理紧急求助</li>
+                </ul>
+                
+                <h4 class="font-semibold text-gray-800">3. 信息保护</h4>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>采用加密技术保护数据传输</li>
+                    <li>严格限制数据访问权限</li>
+                    <li>定期进行安全审计</li>
+                    <li>聊天记录仅存储在本地和授权服务器</li>
+                </ul>
+                
+                <h4 class="font-semibold text-gray-800">4. 信息共享</h4>
+                <p>我们不会出售您的个人信息。仅在以下情况下可能共享：</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>获得您的明确同意</li>
+                    <li>法律要求或政府指令</li>
+                    <li>保护用户或公共安全</li>
+                </ul>
+                
+                <h4 class="font-semibold text-gray-800">5. 您的权利</h4>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>访问和更新您的个人信息</li>
+                    <li>删除您的账户</li>
+                    <li>撤回授权</li>
+                    <li>注销账户</li>
+                </ul>
+                
+                <h4 class="font-semibold text-gray-800">6. 数据安全</h4>
+                <p>我们采取合理的技术和管理措施保护您的信息安全，但不保证绝对安全。</p>
+            </div>
+            
+            <button onclick="hideModal('privacy-modal')" class="w-full mt-6 btn-gradient text-white font-semibold py-3 rounded-xl">
+                我已阅读
+            </button>
+        </div>
+    </div>
+
+    <!-- 注册须知提示 -->
+    <div id="register-notice-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center">
+        <div class="bg-white rounded-3xl p-6 m-4 max-w-md w-full">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-warning"></i>
+                    注册须知
+                </h3>
+                <button onclick="hideModal('register-notice-modal')" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition">
+                    <i class="fa-solid fa-xmark text-gray-500"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                    <i class="fa-solid fa-check-circle text-blue-500 mt-1"></i>
+                    <div>
+                        <p class="font-medium text-gray-800">手机号验证</p>
+                        <p class="text-sm text-gray-600">需要真实手机号接收验证码</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
+                    <i class="fa-solid fa-shield text-green-500 mt-1"></i>
+                    <div>
+                        <p class="font-medium text-gray-800">安全保护</p>
+                        <p class="text-sm text-gray-600">您的信息将被加密保护</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-xl">
+                    <i class="fa-solid fa-lightbulb text-yellow-500 mt-1"></i>
+                    <div>
+                        <p class="font-medium text-gray-800">密码安全</p>
+                        <p class="text-sm text-gray-600">建议使用8位以上混合密码</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start gap-3 p-3 bg-purple-50 rounded-xl">
+                    <i class="fa-solid fa-headset text-purple-500 mt-1"></i>
+                    <div>
+                        <p class="font-medium text-gray-800">客服支持</p>
+                        <p class="text-sm text-gray-600">如有问题请联系客服</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="hideModal('register-notice-modal')" class="w-full mt-6 btn-gradient text-white font-semibold py-3 rounded-xl">
+                知道了
+            </button>
         </div>
     </div>
 
@@ -2679,6 +2846,13 @@
             document.getElementById('show-register').addEventListener('click', function() {
                 document.getElementById('login-form').classList.add('hidden');
                 document.getElementById('register-form').classList.remove('hidden');
+                
+                // 首次打开注册页显示注册须知
+                const hasSeenNotice = localStorage.getItem('hasSeenRegisterNotice');
+                if (!hasSeenNotice) {
+                    showRegisterNotice();
+                    localStorage.setItem('hasSeenRegisterNotice', 'true');
+                }
             });
 
             document.getElementById('show-login').addEventListener('click', function() {
@@ -3327,6 +3501,34 @@
             if (modal) {
                 modal.remove();
             }
+        }
+        
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+        
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+        
+        function showTermsModal(event) {
+            if (event) event.preventDefault();
+            showModal('terms-modal');
+        }
+        
+        function showPrivacyModal(event) {
+            if (event) event.preventDefault();
+            showModal('privacy-modal');
+        }
+        
+        function showRegisterNotice() {
+            showModal('register-notice-modal');
         }
         
         function closeModalAndSend(modalId, message) {

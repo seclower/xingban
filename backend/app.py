@@ -46,8 +46,6 @@ def send_sms_code(phone, code):
     生产环境使用阿里云，开发环境模拟发送
     """
     try:
-        # 生产环境 - 真实的阿里云短信发送（需要安装aliyun-python-sdk-core和aliyun-python-sdk-dysmsapi）
-        # 由于环境限制，这里先使用模拟模式
         logger.info(f'[短信发送] 手机号: {phone}, 验证码: {code}')
         
         # 保存验证码（5分钟有效期）
@@ -56,23 +54,44 @@ def send_sms_code(phone, code):
             'expire_time': time.time() + 300
         }
         
-        # 模拟发送成功（实际环境需要安装阿里云SDK）
-        # TODO: 生产环境需要安装 aliyun-python-sdk-core
-        # from aliyunsdkcore.client import AcsClient
-        # from aliyunsdkcore.request import CommonRequest
-        # client = AcsClient(ALIYUN_ACCESS_KEY_ID, ALIYUN_ACCESS_KEY_SECRET, 'cn-hangzhou')
-        # request = CommonRequest()
-        # request.set_accept_format('json')
-        # request.set_domain('dysmsapi.aliyuncs.com')
-        # request.set_version('2017-05-25')
-        # request.set_action_name('SendSms')
-        # request.add_query_param('PhoneNumbers', phone)
-        # request.add_query_param('SignName', ALIYUN_SMS_SIGN_NAME)
-        # request.add_query_param('TemplateCode', ALIYUN_SMS_TEMPLATE_CODE)
-        # request.add_query_param('TemplateParam', json.dumps({'code': code}))
-        # response = client.do_action(request)
-        
-        return {'success': True, 'code': code, 'message': '验证码已发送'}
+        # 检查是否有阿里云配置
+        if ALIYUN_ACCESS_KEY_ID and ALIYUN_ACCESS_KEY_SECRET and ALIYUN_ACCESS_KEY_ID != 'your_access_key_id':
+            try:
+                # 尝试导入阿里云SDK
+                from aliyunsdkcore.client import AcsClient
+                from aliyunsdkcore.request import CommonRequest
+                
+                client = AcsClient(ALIYUN_ACCESS_KEY_ID, ALIYUN_ACCESS_KEY_SECRET, 'cn-hangzhou')
+                request = CommonRequest()
+                request.set_accept_format('json')
+                request.set_domain('dysmsapi.aliyuncs.com')
+                request.set_version('2017-05-25')
+                request.set_action_name('SendSms')
+                request.add_query_param('PhoneNumbers', phone)
+                request.add_query_param('SignName', ALIYUN_SMS_SIGN_NAME)
+                request.add_query_param('TemplateCode', ALIYUN_SMS_TEMPLATE_CODE)
+                request.add_query_param('TemplateParam', json.dumps({'code': code}))
+                
+                response = client.do_action(request)
+                response_data = json.loads(str(response, encoding='utf-8'))
+                
+                if response_data.get('Code') == 'OK':
+                    logger.info(f'[短信发送] 阿里云短信发送成功: {phone}')
+                    return {'success': True, 'code': code, 'message': '验证码已发送'}
+                else:
+                    logger.warning(f'[短信发送] 阿里云短信发送失败: {response_data.get("Message")}')
+                    # 阿里云失败时降级到模拟模式
+                    return {'success': True, 'code': code, 'message': '验证码已发送（模拟）'}
+                    
+            except ImportError:
+                logger.warning('[短信发送] 阿里云SDK未安装，使用模拟模式')
+                return {'success': True, 'code': code, 'message': '验证码已发送（模拟）'}
+            except Exception as e:
+                logger.error(f'[短信发送] 阿里云短信发送异常: {e}')
+                return {'success': True, 'code': code, 'message': '验证码已发送（模拟）'}
+        else:
+            logger.info('[短信发送] 使用模拟模式发送验证码')
+            return {'success': True, 'code': code, 'message': '验证码已发送（模拟）'}
         
     except Exception as e:
         logger.error(f'短信发送失败: {e}')
@@ -221,6 +240,21 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users (id)
     )''')
     
+    # 创建支付订单表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS payment_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        order_id TEXT UNIQUE NOT NULL,
+        amount REAL NOT NULL,
+        payment_type TEXT DEFAULT 'wechat',
+        product_id TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        paid_at TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    
     # 添加测试用户
     cursor.execute('SELECT * FROM users WHERE phone = ?', ('13188393081',))
     if not cursor.fetchone():
@@ -315,12 +349,41 @@ def wechat_login():
         return jsonify({'message': '微信授权码不能为空'}), 400
     
     try:
-        # 模拟微信登录流程
-        # 真实环境需要调用微信API获取openid
-        # 这里使用模拟数据
+        openid = None
+        nickname = '微信用户'
+        avatar = None
         
-        # 生成唯一的openid
-        openid = 'wx_' + str(random.randint(1000000000, 9999999999))
+        # 检查是否配置了真实微信登录
+        if WECHAT_APP_ID and WECHAT_APP_SECRET and WECHAT_APP_ID != 'your-wechat-app-id':
+            try:
+                import requests
+                
+                # 调用微信API获取session_key和openid
+                url = 'https://api.weixin.qq.com/sns/jscode2session'
+                params = {
+                    'appid': WECHAT_APP_ID,
+                    'secret': WECHAT_APP_SECRET,
+                    'js_code': code,
+                    'grant_type': 'authorization_code'
+                }
+                
+                response = requests.get(url, params=params)
+                result = response.json()
+                
+                if 'openid' in result:
+                    openid = result['openid']
+                    logger.info(f'[微信登录] 获取openid成功: {openid}')
+                else:
+                    logger.error(f'[微信登录] 获取openid失败: {result}')
+                    return jsonify({'message': '微信授权失败'}), 400
+                    
+            except Exception as e:
+                logger.error(f'[微信登录] 调用微信API失败: {e}')
+                # 如果真实微信登录失败，使用模拟模式
+                openid = 'wx_' + str(random.randint(1000000000, 9999999999))
+        else:
+            # 模拟模式生成唯一的openid
+            openid = 'wx_' + str(random.randint(1000000000, 9999999999))
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -337,11 +400,12 @@ def wechat_login():
                 'user': {
                     'id': user['id'],
                     'phone': user['phone'] or '',
-                    'name': user['name'] or '微信用户',
+                    'name': user['name'] or nickname,
                     'avatar': user['avatar'],
                     'bio': user['bio'],
                     'safetyLevel': user['safety_level'],
-                    'membership': user['membership']
+                    'membership': user['membership'],
+                    'need_bind_phone': not user['phone']  # 是否需要绑定手机号
                 }
             })
         else:
@@ -351,7 +415,7 @@ def wechat_login():
             cursor.execute('''
                 INSERT INTO users (phone, name, password, avatar, bio, safety_level, membership, wechat_openid)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (None, '微信用户', hashed_password, 1, '', 'high', 'free', openid))
+            ''', (None, nickname, hashed_password, 1, '', 'high', 'free', openid))
             conn.commit()
             
             user_id = cursor.lastrowid
@@ -362,14 +426,15 @@ def wechat_login():
                 'user': {
                     'id': user_id,
                     'phone': '',
-                    'name': '微信用户',
+                    'name': nickname,
                     'avatar': 1,
                     'bio': '',
                     'safetyLevel': 'high',
-                    'membership': 'free'
-                },
-                'message': '首次登录，请完善个人信息'
+                    'membership': 'free',
+                    'need_bind_phone': True  # 新用户需要绑定手机号
+                }
             })
+            
     except Exception as e:
         logger.error(f'微信登录失败: {e}')
         return jsonify({'message': '微信登录失败'}), 500
@@ -2091,6 +2156,555 @@ def get_admin_logs():
         'details': log['details'],
         'created_at': log['created_at']
     } for log in logs])
+
+# ==================== 支付相关接口 ====================
+
+# 微信支付 - 创建订单
+@app.route('/api/payment/wechat/create', methods=['POST'])
+def create_wechat_payment():
+    """创建微信支付订单"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    data = request.json
+    amount = data.get('amount')
+    payment_type = data.get('type', 'membership')
+    product_id = data.get('product_id', '')
+    
+    if not amount or amount <= 0:
+        return jsonify({'message': '金额错误'}), 400
+    
+    # 创建订单
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    order_id = f"XG{int(time.time())}{random.randint(1000, 9999)}"
+    created_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    cursor.execute('''
+        INSERT INTO payment_orders (user_id, order_id, amount, payment_type, product_id, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, order_id, amount, payment_type, product_id, 'pending', created_at))
+    
+    conn.commit()
+    conn.close()
+    
+    logger.info(f'[微信支付] 创建订单: {order_id}, 用户: {user_id}, 金额: {amount}')
+    
+    # 检查是否配置了真实微信支付
+    if WECHAT_APP_ID and WECHAT_MCH_ID and WECHAT_API_KEY and WECHAT_APP_ID != 'your-wechat-app-id':
+        try:
+            # 真实微信支付 - 使用微信支付SDK
+            from wechatpayv3 import WeChatPay, SignType
+            
+            wxp = WeChatPay(
+                appid=WECHAT_APP_ID,
+                mchid=WECHAT_MCH_ID,
+                api_key=WECHAT_API_KEY,
+                cert_path=WECHAT_CERT_PATH if WECHAT_CERT_PATH and WECHAT_CERT_PATH != '/path/to/your/apiclient_cert.p12' else None
+            )
+            
+            # 创建统一下单
+            result = wxp.order.create(
+                description=f'星伴守护-{payment_type}',
+                out_trade_no=order_id,
+                amount={'total': int(amount * 100)},  # 转换为分
+                notify_url=f'{API_BASE_URL}/api/payment/wechat/callback'
+            )
+            
+            logger.info(f'[微信支付] 统一下单成功: {order_id}')
+            
+            return jsonify({
+                'success': True,
+                'order_id': order_id,
+                'payment_type': 'wechat',
+                'prepay_id': result.get('prepay_id'),
+                'code_url': result.get('code_url'),  # 二维码链接
+                'message': '支付订单创建成功'
+            })
+            
+        except ImportError:
+            logger.warning('[微信支付] 未安装wechatpayv3 SDK，使用模拟模式')
+        except Exception as e:
+            logger.error(f'[微信支付] 创建订单失败: {e}')
+    
+    # 模拟模式或配置未完成
+    return jsonify({
+        'success': True,
+        'order_id': order_id,
+        'payment_type': 'wechat',
+        'message': '请配置微信支付后使用真实支付',
+        'qrcode_data': f'weixin://wxpay/bizpayurl?pr=mock{order_id}'
+    })
+
+# 微信支付回调
+@app.route('/api/payment/wechat/callback', methods=['POST'])
+def wechat_payment_callback():
+    """微信支付回调"""
+    try:
+        data = request.get_json()
+        if not data:
+            # 微信回调可能是XML格式
+            from xml.etree import ElementTree
+            xml_data = request.data
+            root = ElementTree.fromstring(xml_data)
+            data = {}
+            for child in root:
+                data[child.tag] = child.text
+        
+        order_id = data.get('out_trade_no')
+        transaction_id = data.get('transaction_id')
+        result_code = data.get('result_code')
+        
+        if not order_id:
+            return '<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[订单号缺失]]></return_msg></xml>'
+        
+        if result_code == 'SUCCESS':
+            # 支付成功
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT * FROM payment_orders WHERE order_id = ?', (order_id,))
+            order = cursor.fetchone()
+            
+            if order and order['status'] == 'pending':
+                paid_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute('''
+                    UPDATE payment_orders 
+                    SET status = 'paid', paid_at = ?, transaction_id = ?
+                    WHERE order_id = ?
+                ''', (paid_at, transaction_id, order_id))
+                
+                # 如果是会员购买，更新用户会员状态
+                if order['payment_type'] == 'membership':
+                    membership_expire = (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+                    cursor.execute('''
+                        UPDATE users 
+                        SET membership = 'VIP会员', 
+                            membership_type = 'paid', 
+                            membership_expire = ?
+                        WHERE id = ?
+                    ''', (membership_expire, order['user_id']))
+                
+                conn.commit()
+                logger.info(f'[微信支付] 支付成功: {order_id}')
+            
+            conn.close()
+        
+        return '<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>'
+    
+    except Exception as e:
+        logger.error(f'[微信支付] 回调处理失败: {e}')
+        return '<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[处理失败]]></return_msg></xml>'
+
+# 支付宝支付 - 创建订单
+@app.route('/api/payment/alipay/create', methods=['POST'])
+def create_alipay_payment():
+    """创建支付宝支付订单"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    data = request.json
+    amount = data.get('amount')
+    payment_type = data.get('type', 'membership')
+    product_id = data.get('product_id', '')
+    
+    if not amount or amount <= 0:
+        return jsonify({'message': '金额错误'}), 400
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    order_id = f"XG{int(time.time())}{random.randint(1000, 9999)}"
+    created_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    cursor.execute('''
+        INSERT INTO payment_orders (user_id, order_id, amount, payment_type, product_id, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, order_id, amount, payment_type, product_id, 'pending', created_at))
+    
+    conn.commit()
+    conn.close()
+    
+    logger.info(f'[支付宝支付] 创建订单: {order_id}, 用户: {user_id}, 金额: {amount}')
+    
+    # 检查是否配置了真实支付宝
+    if ALIPAY_APP_ID and ALIPAY_PRIVATE_KEY and ALIPAY_APP_ID != 'your-alipay-app-id':
+        try:
+            # 真实支付宝支付
+            from alipay import AliPay
+            
+            alipay = AliPay(
+                appid=ALIPAY_APP_ID,
+                app_notify_url=f'{API_BASE_URL}/api/payment/alipay/callback',
+                app_private_key_string=ALIPAY_PRIVATE_KEY,
+                alipay_public_key_string=ALIPAY_PUBLIC_KEY,
+                sign_type='RSA2',
+                debug=False
+            )
+            
+            # 创建支付订单
+            order_string = alipay.api_alipay_trade_page_pay(
+                out_trade_no=order_id,
+                total_amount=str(amount),
+                subject=f'星伴守护-{payment_type}',
+                return_url=f'{API_BASE_URL}/payment/success',
+                notify_url=f'{API_BASE_URL}/api/payment/alipay/callback'
+            )
+            
+            pay_url = f'{ALIPAY_GATEWAY}?{order_string}'
+            
+            logger.info(f'[支付宝支付] 创建订单成功: {order_id}')
+            
+            return jsonify({
+                'success': True,
+                'order_id': order_id,
+                'payment_type': 'alipay',
+                'pay_url': pay_url,
+                'message': '支付订单创建成功'
+            })
+            
+        except ImportError:
+            logger.warning('[支付宝支付] 未安装alipay-sdk-python，使用模拟模式')
+        except Exception as e:
+            logger.error(f'[支付宝支付] 创建订单失败: {e}')
+    
+    # 模拟模式或配置未完成
+    return jsonify({
+        'success': True,
+        'order_id': order_id,
+        'payment_type': 'alipay',
+        'message': '请配置支付宝支付后使用真实支付',
+        'qrcode_data': f'alipay://platformapi/startapp?saId=10000007&qrcode=mock{order_id}'
+    })
+
+# 支付宝支付回调
+@app.route('/api/payment/alipay/callback', methods=['POST'])
+def alipay_payment_callback():
+    """支付宝支付回调"""
+    try:
+        data = request.form.to_dict()
+        
+        if ALIPAY_APP_ID and ALIPAY_PRIVATE_KEY and ALIPAY_APP_ID != 'your-alipay-app-id':
+            from alipay import AliPay
+            
+            alipay = AliPay(
+                appid=ALIPAY_APP_ID,
+                app_notify_url=f'{API_BASE_URL}/api/payment/alipay/callback',
+                app_private_key_string=ALIPAY_PRIVATE_KEY,
+                alipay_public_key_string=ALIPAY_PUBLIC_KEY,
+                sign_type='RSA2',
+                debug=False
+            )
+            
+            # 验证签名
+            sign = data.pop('sign', None)
+            sign_type = data.pop('sign_type', None)
+            
+            if not alipay.verify(data, sign):
+                logger.warning('[支付宝支付] 签名验证失败')
+                return 'failure'
+        else:
+            # 开发环境跳过签名验证
+            pass
+        
+        order_id = data.get('out_trade_no')
+        trade_status = data.get('trade_status')
+        transaction_id = data.get('trade_no')
+        
+        if trade_status == 'TRADE_SUCCESS' or trade_status == 'TRADE_FINISHED':
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT * FROM payment_orders WHERE order_id = ?', (order_id,))
+            order = cursor.fetchone()
+            
+            if order and order['status'] == 'pending':
+                paid_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute('''
+                    UPDATE payment_orders 
+                    SET status = 'paid', paid_at = ?, transaction_id = ?
+                    WHERE order_id = ?
+                ''', (paid_at, transaction_id, order_id))
+                
+                if order['payment_type'] == 'membership':
+                    membership_expire = (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+                    cursor.execute('''
+                        UPDATE users 
+                        SET membership = 'VIP会员', 
+                            membership_type = 'paid', 
+                            membership_expire = ?
+                        WHERE id = ?
+                    ''', (membership_expire, order['user_id']))
+                
+                conn.commit()
+                logger.info(f'[支付宝支付] 支付成功: {order_id}')
+            
+            conn.close()
+        
+        return 'success'
+    
+    except Exception as e:
+        logger.error(f'[支付宝支付] 回调处理失败: {e}')
+        return 'failure'
+
+# 查询支付订单状态
+@app.route('/api/payment/query/<order_id>', methods=['GET'])
+def query_payment_status(order_id):
+    """查询支付订单状态"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM payment_orders WHERE order_id = ? AND user_id = ?', (order_id, user_id))
+    order = cursor.fetchone()
+    
+    if not order:
+        conn.close()
+        return jsonify({'message': '订单不存在'}), 404
+    
+    conn.close()
+    
+    return jsonify({
+        'order_id': order['order_id'],
+        'amount': order['amount'],
+        'payment_type': order['payment_type'],
+        'status': order['status'],
+        'created_at': order['created_at'],
+        'paid_at': order['paid_at']
+    })
+
+# 模拟支付回调（测试用）
+@app.route('/api/payment/callback/mock', methods=['POST'])
+def mock_payment_callback():
+    """模拟支付回调"""
+    data = request.json
+    order_id = data.get('order_id')
+    
+    if not order_id:
+        return jsonify({'success': False, 'message': '订单号缺失'}), 400
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM payment_orders WHERE order_id = ?', (order_id,))
+    order = cursor.fetchone()
+    
+    if not order:
+        conn.close()
+        return jsonify({'success': False, 'message': '订单不存在'}), 404
+    
+    # 更新订单状态
+    paid_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cursor.execute('''
+        UPDATE payment_orders 
+        SET status = 'paid', paid_at = ?
+        WHERE order_id = ?
+    ''', (paid_at, order_id))
+    
+    # 如果是会员购买，更新用户会员状态
+    if order['payment_type'] == 'membership':
+        # 这里可以根据支付金额设置不同的会员等级和时长
+        membership_expire = (datetime.datetime.now() + datetime.timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute('''
+            UPDATE users 
+            SET membership = 'VIP会员', 
+                membership_type = 'paid', 
+                membership_expire = ?
+            WHERE id = ?
+        ''', (membership_expire, order['user_id']))
+        
+        logger.info(f'[支付] 会员开通成功: 用户 {order["user_id"]}, 订单 {order_id}')
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': '支付成功'})
+
+# 获取支付订单列表
+@app.route('/api/payment/orders', methods=['GET'])
+def get_payment_orders():
+    """获取用户支付订单列表"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 20))
+    offset = (page - 1) * limit
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM payment_orders 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT ? OFFSET ?
+    ''', (user_id, limit, offset))
+    
+    orders = cursor.fetchall()
+    conn.close()
+    
+    return jsonify([{
+        'order_id': o['order_id'],
+        'amount': o['amount'],
+        'payment_type': o['payment_type'],
+        'product_id': o['product_id'],
+        'status': o['status'],
+        'created_at': o['created_at'],
+        'paid_at': o['paid_at']
+    } for o in orders])
+
+# ==================== 会员管理接口 ====================
+
+# 获取会员信息
+@app.route('/api/membership/info', methods=['GET'])
+def get_membership_info():
+    """获取用户会员信息"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    return jsonify({
+        'membership': user['membership'],
+        'membership_type': user['membership_type'],
+        'membership_expire': user['membership_expire'],
+        'is_vip': user['membership_type'] == 'paid'
+    })
+
+# 会员套餐列表
+@app.route('/api/membership/plans', methods=['GET'])
+def get_membership_plans():
+    """获取会员套餐列表"""
+    return jsonify([
+        {
+            'id': 'monthly',
+            'name': '月度会员',
+            'price': 29.9,
+            'duration': 30,
+            'description': '享受VIP专属服务',
+            'features': [
+                'AI智能陪伴无限畅聊',
+                '安全防护功能升级',
+                '优先客服支持'
+            ]
+        },
+        {
+            'id': 'quarterly',
+            'name': '季度会员',
+            'price': 79.9,
+            'duration': 90,
+            'description': '超值季度套餐',
+            'features': [
+                'AI智能陪伴无限畅聊',
+                '安全防护功能升级',
+                '优先客服支持',
+                '额外会员权益'
+            ]
+        },
+        {
+            'id': 'yearly',
+            'name': '年度会员',
+            'price': 299.0,
+            'duration': 365,
+            'description': '性价比之王，一年无忧',
+            'features': [
+                'AI智能陪伴无限畅聊',
+                '安全防护功能升级',
+                '优先客服支持',
+                '额外会员权益',
+                '专属定制服务'
+            ]
+        }
+    ])
+
+# 微信登录 - 绑定手机号
+@app.route('/api/auth/wechat/bind-phone', methods=['POST'])
+def wechat_bind_phone():
+    """微信登录后绑定手机号"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': '未授权'}), 401
+    
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'message': '无效的令牌'}), 401
+    
+    data = request.json
+    phone = data.get('phone')
+    code = data.get('code')
+    
+    if not phone or not code:
+        return jsonify({'message': '请填写手机号和验证码'}), 400
+    
+    # 验证验证码
+    is_valid, msg = verify_code(phone, code)
+    if not is_valid:
+        return jsonify({'message': msg}), 400
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 检查手机号是否已被注册
+    cursor.execute('SELECT id FROM users WHERE phone = ? AND id != ?', (phone, user_id))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'message': '该手机号已被注册'}), 400
+    
+    # 更新用户手机号
+    cursor.execute('UPDATE users SET phone = ? WHERE id = ?', (phone, user_id))
+    conn.commit()
+    
+    # 获取更新后的用户信息
+    cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    logger.info(f'[微信绑定] 用户 {user_id} 绑定手机号成功: {phone}')
+    
+    return jsonify({
+        'token': generate_token(user_id),
+        'user': {
+            'id': user['id'],
+            'phone': user['phone'],
+            'name': user['name'],
+            'avatar': user['avatar'],
+            'bio': user['bio'],
+            'safetyLevel': user['safety_level'],
+            'membership': user['membership']
+        },
+        'message': '手机号绑定成功'
+    })
 
 if __name__ == '__main__':
     init_db()

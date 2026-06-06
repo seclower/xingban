@@ -1,0 +1,31 @@
+{
+  "builds": [
+    {
+      "src": "server.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "server.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "DEEPSEEK_API_KEY": "@deepseek_api_key",
+    "SECRET_KEY": "@secret_key",
+    "ALIYUN_ACCESS_KEY_ID": "@aliyun_access_key_id",
+    "ALIYUN_ACCESS_KEY_SECRET": "@aliyun_access_key_secret",
+    "ALIYUN_SMS_SIGN_NAME": "@aliyun_sms_sign_name",
+    "ALIYUN_SMS_TEMPLATE_CODE": "@aliyun_sms_template_code"
+  }
+}
